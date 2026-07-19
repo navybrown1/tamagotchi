@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tamagotchi — Retro</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body {
+    background: linear-gradient(135deg, #2b2d42 0%, #4a3f6b 50%, #2b2d42 100%);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 14px; font-family: 'Courier New', monospace; overflow: hidden;
+  }
+  body::before, body::after {
+    content: ''; position: fixed; border-radius: 50%; opacity: 0.14; pointer-events: none; z-index: 0;
+  }
+  body::before {
+    width: 300px; height: 300px; background: radial-gradient(circle, #f472b6, transparent);
+    top: -50px; left: -70px; animation: floatGlow 13s ease-in-out infinite;
+  }
+  body::after {
+    width: 240px; height: 240px; background: radial-gradient(circle, #60a5fa, transparent);
+    bottom: -40px; right: -50px; animation: floatGlow 11s ease-in-out infinite reverse;
+  }
+  @keyframes floatGlow { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25px,-18px) scale(1.12); } }
+
+  .device {
+    width: 400px;
+    background: linear-gradient(160deg, #ff8fb8 0%, #b388ff 50%, #6fa8ff 100%);
+    border-radius: 54% 54% 47% 47% / 36% 36% 64% 64%;
+    padding: 20px 18px 22px; position: relative; z-index: 1;
+    box-shadow: 0 24px 70px rgba(120,90,220,0.5), 0 6px 20px rgba(0,0,0,0.35),
+      inset 0 6px 18px rgba(255,255,255,0.5), inset 0 -6px 14px rgba(0,0,0,0.12);
+  }
+  .device::before {
+    content: ''; position: absolute; top: 7%; left: 14%; width: 72%; height: 20%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.55), transparent);
+    border-radius: 50%; pointer-events: none;
+  }
+  .gem { position: absolute; border-radius: 50%; pointer-events: none; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+  .gem.g1 { width: 9px; height: 9px; background: #fde047; top: 8%; left: 17%; }
+  .gem.g2 { width: 8px; height: 8px; background: #a7f3d0; top: 11%; right: 19%; }
+  .gem.g3 { width: 7px; height: 7px; background: #fbcfe8; bottom: 13%; left: 21%; }
+  .brand {
+    text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 4px;
+    color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-bottom: 8px;
+  }
+  .brand span { color: #ffe066; }
+
+  .screen {
+    background: linear-gradient(160deg, #3a3f4a, #23262e);
+    border-radius: 18px; padding: 12px; position: relative;
+    box-shadow: inset 0 3px 8px rgba(0,0,0,0.55), inset 0 -2px 4px rgba(255,255,255,0.08), 0 4px 12px rgba(0,0,0,0.25);
+  }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; font-weight: 900; letter-spacing: 2px; color: #ffe9a8;
+    margin-bottom: 8px; text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+  }
+  .topbar .age-display { color: #a8e6ff; }
+  .mute-btn {
+    border: none; background: rgba(255,255,255,0.12); color: #fff; border-radius: 8px;
+    font-size: 12px; padding: 2px 8px; cursor: pointer; font-family: inherit;
+  }
+  .mute-btn:hover { background: rgba(255,255,255,0.25); }
+
+  .lcd-frame {
+    position: relative; border-radius: 10px; overflow: hidden;
+    border: 3px solid #15171c; box-shadow: inset 0 0 24px rgba(0,0,0,0.35);
+  }
+  #lcd {
+    display: block; width: 100%; aspect-ratio: 4 / 3;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    background: #f6ecc9; cursor: pointer;
+  }
+  .scanlines {
+    position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom,
+      rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.09) 2px, rgba(0,0,0,0.09) 3px);
+    animation: flicker 0.12s infinite alternate;
+  }
+  .vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(20,10,30,0.28) 100%);
+  }
+  @keyframes flicker { 0% { opacity: 0.85; } 100% { opacity: 1; } }
+
+  .stats-area { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+  .stat { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 900; color: #e8e4f5; }
+  .stat .icon { font-size: 12px; width: 17px; text-align: center; flex-shrink: 0; }
+  .stat .bar-wrap {
+    flex: 1; height: 8px; background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; overflow: hidden;
+  }
+  .stat .bar-fill { height: 100%; transition: width 0.4s steps(8); width: 100%; }
+  .stat .bar-fill.hunger { background: #ff9f43; }
+  .stat .bar-fill.thirst { background: #54c8f0; }
+  .stat .bar-fill.happy  { background: #ffd93d; }
+  .stat .bar-fill.energy { background: #b388ff; }
+  .stat .bar-fill.clean  { background: #6ee7a0; }
+  .stat .bar-fill.health { background: #ff6b8a; }
+  .stat .value { font-size: 10px; width: 22px; text-align: right; flex-shrink: 0; color: #cfc8ea; }
+
+  .message-box {
+    margin-top: 8px; padding: 6px 10px; background: rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,233,168,0.25); border-radius: 8px; text-align: center;
+    font-size: 11px; font-weight: 900; letter-spacing: 1px; color: #ffe9a8;
+    min-height: 30px; display: flex; align-items: center; justify-content: center;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+  }
+
+  .controls { margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .controls button {
+    border: none; border-radius: 50%; width: 62px; height: 62px; margin: 0 auto;
+    font-size: 10px; font-weight: 900; color: #fff; cursor: pointer;
+    font-family: inherit; letter-spacing: 0.5px;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.25), inset 0 3px 6px rgba(255,255,255,0.35);
+    transition: transform 0.06s, box-shadow 0.06s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .controls button .b-icon { font-size: 20px; line-height: 1; }
+  .controls button:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,0.25), inset 0 3px 6px rgba(255,255,255,0.35); }
+  .btn-feed  { background: radial-gradient(circle at 35% 30%, #ffb46b, #e2632f); }
+  .btn-drink { background: radial-gradient(circle at 35% 30%, #7dd3fc, #1d6fd1); }
+  .btn-play  { background: radial-gradient(circle at 35% 30%, #ffe066, #d19a00); }
+  .btn-clean { background: radial-gradient(circle at 35% 30%, #6ee7a0, #0e9f5c); }
+  .btn-sleep { background: radial-gradient(circle at 35% 30%, #c4b0ff, #6d3fd1); }
+  .btn-cure  { background: radial-gradient(circle at 35% 30%, #ff9fc4, #d12e76); }
+
+  .env-row { margin-top: 10px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .env-btn {
+    border: none; border-radius: 20px; padding: 5px 11px; font-size: 10px; font-weight: 900;
+    color: #fff; font-family: inherit; letter-spacing: 1px;
+    background: rgba(255,255,255,0.18); cursor: pointer; transition: all 0.15s;
+  }
+  .env-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.05); }
+  .env-btn.active { background: #fff; color: #3a3f4a; box-shadow: 0 0 14px rgba(255,255,255,0.4); }
+
+  .reset-row { margin-top: 10px; text-align: center; }
+  .reset-btn {
+    border: none; border-radius: 30px; padding: 7px 20px; font-size: 11px; font-weight: 900;
+    color: #fff; font-family: inherit; letter-spacing: 2px;
+    background: linear-gradient(135deg, #ff6b8a, #d12e5c);
+    cursor: pointer; box-shadow: 0 4px 0 #8f1b3d; transition: transform 0.06s, box-shadow 0.06s;
+  }
+  .reset-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #8f1b3d; }
+
+  .gameover-overlay {
+    position: absolute; inset: 0; background: rgba(10,8,20,0.82); backdrop-filter: blur(3px);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 18px; border-radius: 14px; z-index: 20;
+  }
+  .gameover-overlay.show { display: flex; }
+  .go-content {
+    background: #f6ecc9; border: 3px solid #3a3f4a; border-radius: 14px;
+    padding: 18px 22px; max-width: 250px;
+    animation: goAppear 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes goAppear { 0% { transform: scale(0.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .go-content h2 { font-size: 24px; margin-bottom: 4px; color: #d12e5c; }
+  .go-content p { font-size: 11px; font-weight: 700; color: #5a5340; line-height: 1.5; margin-bottom: 12px; }
+  .go-content button {
+    border: none; border-radius: 30px; padding: 7px 20px; font-size: 11px; font-weight: 900;
+    color: #fff; font-family: inherit; letter-spacing: 1px;
+    background: linear-gradient(135deg, #ff6b8a, #d12e5c); cursor: pointer; box-shadow: 0 4px 0 #8f1b3d;
+  }
+  .go-content button:active { transform: translateY(3px); box-shadow: 0 0 0 #8f1b3d; }
+
+  @media (max-width: 430px) {
+    .device { width: 94vw; padding: 14px 12px 16px; }
+    .controls button { width: 54px; height: 54px; font-size: 9px; }
+    .controls button .b-icon { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="gem g1"></div>
+  <div class="gem g2"></div>
+  <div class="gem g3"></div>
+  <div class="brand">★ <span>TAMA</span>GOTCHI ★</div>
+
+  <div class="screen">
+    <div class="topbar">
+      <span id="stageName">EGG</span>
+      <span class="age-display" id="ageDisplay">AGE 0</span>
+      <button class="mute-btn" id="btnMute">🔊</button>
+    </div>
+
+    <div class="lcd-frame">
+      <canvas id="lcd" width="160" height="120"></canvas>
+      <div class="scanlines"></div>
+      <div class="vignette"></div>
+    </div>
+
+    <div class="stats-area">
+      <div class="stat"><span class="icon">🍎</span><div class="bar-wrap"><div class="bar-fill hunger" id="statHunger"></div></div><span class="value" id="valHunger">100</span></div>
+      <div class="stat"><span class="icon">💧</span><div class="bar-wrap"><div class="bar-fill thirst" id="statThirst"></div></div><span class="value" id="valThirst">100</span></div>
+      <div class="stat"><span class="icon">❤️</span><div class="bar-wrap"><div class="bar-fill happy" id="statHappy"></div></div><span class="value" id="valHappy">100</span></div>
+      <div class="stat"><span class="icon">⚡</span><div class="bar-wrap"><div class="bar-fill energy" id="statEnergy"></div></div><span class="value" id="valEnergy">100</span></div>
+      <div class="stat"><span class="icon">✨</span><div class="bar-wrap"><div class="bar-fill clean" id="statClean"></div></div><span class="value" id="valClean">100</span></div>
+      <div class="stat"><span class="icon">💚</span><div class="bar-wrap"><div class="bar-fill health" id="statHealth"></div></div><span class="value" id="valHealth">100</span></div>
+    </div>
+
+    <div class="message-box" id="messageBox">TAP THE EGG TO HATCH IT!</div>
+
+    <div class="controls">
+      <button class="btn-feed" id="btnFeed"><span class="b-icon">🍎</span>FEED</button>
+      <button class="btn-drink" id="btnDrink"><span class="b-icon">💧</span>DRINK</button>
+      <button class="btn-play" id="btnPlay"><span class="b-icon">🎮</span>PLAY</button>
+      <button class="btn-clean" id="btnClean"><span class="b-icon">🛁</span>CLEAN</button>
+      <button class="btn-sleep" id="btnSleep"><span class="b-icon">😴</span>SLEEP</button>
+      <button class="btn-cure" id="btnCure"><span class="b-icon">💊</span>CURE</button>
+    </div>
+
+    <div class="env-row">
+      <button class="env-btn active" data-env="home">🏠 HOME</button>
+      <button class="env-btn" data-env="park">🌳 PARK</button>
+      <button class="env-btn" data-env="beach">🏖️ BEACH</button>
+      <button class="env-btn" data-env="space">🚀 SPACE</button>
+    </div>
+
+    <div class="reset-row">
+      <button class="reset-btn" id="btnReset">★ NEW PET ★</button>
+    </div>
+
+    <div class="gameover-overlay" id="gameoverOverlay">
+      <div class="go-content">
+        <h2 id="goEmoji">👼</h2>
+        <p id="goText">Your pet journey has ended.</p>
+        <button id="goResetBtn">★ TRY AGAIN ★</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  /* ===== CONSTANTS ===== */
+  var STAGES = [
+    { key: 'egg',   name: 'EGG',   minAge: 0  },
+    { key: 'baby',  name: 'BABY',  minAge: 8  },
+    { key: 'child', name: 'CHILD', minAge: 28 },
+    { key: 'teen',  name: 'TEEN',  minAge: 55 },
+    { key: 'adult', name: 'ADULT', minAge: 90 }
+  ];
+  var ENVS = {
+    home:  { label: 'HOME',  hunger: 1.0, thirst: 1.0, happy: 0.5, energy: 0.4, clean: 0.7 },
+    park:  { label: 'PARK',  hunger: 1.3, thirst: 1.2, happy: 1.6, energy: 1.1, clean: 1.3 },
+    beach: { label: 'BEACH', hunger: 1.5, thirst: 1.8, happy: 1.8, energy: 1.4, clean: 1.5 },
+    space: { label: 'SPACE', hunger: 1.9, thirst: 1.9, happy: 1.1, energy: 1.7, clean: 0.9 }
+  };
+  var INK = '#33303e', WHITE = '#fff8ee', GOLD = '#ffcf4d';
+  var PALS = {
+    baby:  { body: '#ff9ec4', shade: '#e0769e', hi: '#ffd6e6', cheek: '#ff7d9c' },
+    child: { body: '#ffb26b', shade: '#e08a4a', hi: '#ffdcb8', cheek: '#ff8f6b' },
+    teen:  { body: '#6bb8ff', shade: '#4a8ae0', hi: '#bfe0ff', cheek: '#ff9fb0' },
+    adult: { body: '#b78bff', shade: '#8f5fe0', hi: '#e2ccff', cheek: '#ff8fc4' }
+  };
+  var SICK_PAL = { body: '#b9c49a', shade: '#8f9a6e', hi: '#dde3c4', cheek: '#9aa880' };
+  var BODIES = {
+    baby:  { rx: 9,  ry: 8,  ears: false, tuft: false, limbs: false },
+    child: { rx: 11, ry: 10, ears: false, tuft: false, limbs: true  },
+    teen:  { rx: 12, ry: 11, ears: false, tuft: true,  limbs: true  },
+    adult: { rx: 13, ry: 12, ears: true,  tuft: true,  limbs: true  }
+  };
+
+  /* ===== STATE ===== */
+  var state, tickTimer = null, tickCount = 0;
+  var sceneTime = 0;
+  var activity = null, activityUntil = 0;
+  var poop = null, nextPoopAt = 0;
+  var lastBeepAt = 0;
+  var lastBlinkAt = 0, blinkUntil = 0;
+  var glanceUntil = 0, glanceDir = 1;
+  var hopUntil = 0;
+  var evolveFlashUntil = 0, ghostUntil = 0;
+  var particles = [];
+  var shellGame = null;
+  var muted = false, audioStarted = false;
+  var lastStageKey = 'egg';
+
+  /* ===== DOM ===== */
+  function $(id) { return document.getElementById(id); }
+  var el = {
+    lcd: $('lcd'),
+    stageName: $('stageName'), ageDisplay: $('ageDisplay'),
+    msg: $('messageBox'),
+    overlay: $('gameoverOverlay'), goEmoji: $('goEmoji'), goText: $('goText'),
+    mute: $('btnMute'),
+    statBars: {
+      hunger: $('statHunger'), thirst: $('statThirst'), happy: $('statHappy'),
+      energy: $('statEnergy'), clean: $('statClean'), health: $('statHealth')
+    },
+    statVals: {
+      hunger: $('valHunger'), thirst: $('valThirst'), happy: $('valHappy'),
+      energy: $('valEnergy'), clean: $('valClean'), health: $('valHealth')
+    },
+    envBtns: document.querySelectorAll('.env-btn')
+  };
+  var g = el.lcd.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  var W = 160, H = 120, GROUND_Y = 88;
+
+  /* ===== PIXEL DRAW HELPERS (direct on canvas) ===== */
+  function px(x, y, c) { x = Math.round(x); y = Math.round(y); if (x<0||y<0||x>=W||y>=H) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); }
+  function rect(x0, y0, x1, y1, c) { g.fillStyle = c; g.fillRect(Math.round(x0), Math.round(y0), Math.round(x1-x0)+1, Math.round(y1-y0)+1); }
+  function ell(cx, cy, rx, ry, c) {
+    g.fillStyle = c;
+    for (var y = Math.floor(cy-ry)-1; y <= Math.ceil(cy+ry)+1; y++)
+      for (var x = Math.floor(cx-rx)-1; x <= Math.ceil(cx+rx)+1; x++) {
+        var dx = (x-cx)/rx, dy = (y-cy)/ry;
+        if (dx*dx + dy*dy <= 1) g.fillRect(Math.round(x), Math.round(y), 1, 1);
+      }
+  }
+
+  /* ===== AUDIO ENGINE ===== */
+  var AC = null, master = null, noiseBuf = null;
+  var seqStep = 0, seqNextT = 0, seqTimer = null;
+
+  function initAudio() {
+    if (AC) return;
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain();
+      master.gain.value = muted ? 0 : 1;
+      master.connect(AC.destination);
+      noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.25, AC.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    } catch (e) {}
+  }
+  function mf(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+  function aNow() { return AC ? AC.currentTime : 0; }
+  function tone(midi, when, dur, type, vol, slideTo) {
+    if (!AC || !master) return;
+    try {
+      var o = AC.createOscillator(), gn = AC.createGain();
+      o.type = type || 'square';
+      o.frequency.setValueAtTime(mf(midi), when);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(mf(slideTo), when + dur);
+      gn.gain.setValueAtTime(vol, when);
+      gn.gain.exponentialRampToValueAtTime(0.001, when + dur);
+      o.connect(gn); gn.connect(master);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch (e) {}
+  }
+  function noiseHit(when, dur, vol, freq) {
+    if (!AC || !master) return;
+    try {
+      var s = AC.createBufferSource(); s.buffer = noiseBuf;
+      var f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = freq || 4000;
+      var gn = AC.createGain();
+      gn.gain.setValueAtTime(vol, when);
+      gn.gain.exponentialRampToValueAtTime(0.001, when + dur);
+      s.connect(f); f.connect(gn); gn.connect(master);
+      s.start(when); s.stop(when + dur + 0.02);
+    } catch (e) {}
+  }
+
+  /* chiptune sequencer */
+  var MEL  = [76,0,79,0, 76,0,72,0, 76,0,79,0, 81,0,79,0, 77,0,81,0, 77,0,74,0, 76,0,79,0, 72,0,0,0];
+  var BASS = [48,0,0,0, 43,0,0,0, 45,0,0,0, 43,0,0,0, 41,0,0,0, 43,0,0,0, 48,0,0,0, 43,0,0,0];
+  var STEP_DUR = 0.125;
+  function scheduleStep(step, t) {
+    if (muted) return;
+    if (MEL[step]) tone(MEL[step], t, 0.11, 'square', 0.045);
+    if (BASS[step]) tone(BASS[step], t, 0.3, 'triangle', 0.07);
+    if (step % 2 === 0) noiseHit(t, 0.02, step % 8 === 0 ? 0.03 : 0.012, 6000);
+  }
+  function startMusic() {
+    if (!AC || seqTimer) return;
+    seqStep = 0; seqNextT = AC.currentTime + 0.06;
+    seqTimer = setInterval(function() {
+      if (!AC) return;
+      while (seqNextT < AC.currentTime + 0.14) {
+        scheduleStep(seqStep, seqNextT);
+        seqStep = (seqStep + 1) % 32;
+        seqNextT += STEP_DUR;
+      }
+    }, 30);
+  }
+  function stopMusic() { if (seqTimer) { clearInterval(seqTimer); seqTimer = null; } }
+
+  /* SFX */
+  function sfxClick()  { if (!AC) return; tone(95, aNow(), 0.04, 'square', 0.05); }
+  function sfxBeep()   { if (!AC) return; var t = aNow(); tone(88, t, 0.09, 'square', 0.06); tone(88, t+0.16, 0.09, 'square', 0.06); }
+  function sfxMunch()  { if (!AC) return; var t = aNow(); for (var i=0;i<3;i++){ tone(62-i*5, t+i*0.14, 0.07, 'square', 0.07); noiseHit(t+i*0.14, 0.04, 0.05, 1200); } }
+  function sfxGlug()   { if (!AC) return; var t = aNow(); for (var i=0;i<3;i++) tone(72-i*8, t+i*0.15, 0.1, 'sine', 0.08, 60-i*8); }
+  function sfxBoing()  { if (!AC) return; var t = aNow(); tone(55, t, 0.28, 'sawtooth', 0.06, 84); tone(79, t+0.12, 0.14, 'square', 0.05); }
+  function sfxChime()  { if (!AC) return; var t = aNow(); var n=[88,92,95,100]; for (var i=0;i<4;i++) tone(n[i], t+i*0.07, 0.18, 'sine', 0.05); }
+  function sfxFlush()  { if (!AC) return; var t = aNow(); noiseHit(t, 0.4, 0.09, 800); tone(80, t, 0.35, 'sine', 0.05, 45); }
+  function sfxCrack()  { if (!AC) return; var t = aNow(); noiseHit(t, 0.08, 0.12, 1800); tone(58, t, 0.05, 'square', 0.05); }
+  function sfxFanfare(){ if (!AC) return; var t = aNow(); var n=[72,76,79,84]; for (var i=0;i<4;i++) tone(n[i], t+i*0.11, 0.16, 'square', 0.06); tone(84, t+0.44, 0.35, 'square', 0.06); }
+  function sfxEvolve() { if (!AC) return; var t = aNow(); var n=[60,62,64,65,67,69,71,72,84]; for (var i=0;i<n.length;i++) tone(n[i], t+i*0.07, 0.1, 'square', 0.055); }
+  function sfxDeath()  { if (!AC) return; var t = aNow(); var n=[72,71,69,65,60]; for (var i=0;i<n.length;i++) tone(n[i], t+i*0.3, 0.32, 'sawtooth', 0.045); }
+  function sfxWin()    { if (!AC) return; var t = aNow(); var n=[79,84,88,91]; for (var i=0;i<n.length;i++) tone(n[i], t+i*0.09, 0.14, 'square', 0.06); }
+  function sfxLose()   { if (!AC) return; var t = aNow(); tone(64, t, 0.18, 'square', 0.06); tone(60, t+0.18, 0.3, 'square', 0.06); }
+  function sfxShuffle(){ if (!AC) return; var t = aNow(); for (var i=0;i<3;i++) tone(60+i*6, t+i*0.12, 0.05, 'square', 0.05); }
+  function sfxLullaby(){ if (!AC) return; var t = aNow(); var n=[76,74,72,67,64,60]; for (var i=0;i<n.length;i++) tone(n[i], t+i*0.45, 0.5, 'triangle', 0.05); }
+  function sfxSick()   { if (!AC) return; var t = aNow(); tone(60, t, 0.25, 'sawtooth', 0.05, 55); tone(58, t+0.25, 0.35, 'sawtooth', 0.05, 50); }
+  function sfxHappy()  { if (!AC) return; var t = aNow(); tone(84, t, 0.09, 'square', 0.06); tone(91, t+0.1, 0.15, 'square', 0.06); }
+
+  /* ===== SPRITE FACTORY (offscreen canvases) ===== */
+  var SW = 40, SH = 40;
+  var spriteCache = {};
+
+  function spx(c, x, y, col) { x = Math.round(x); y = Math.round(y); if (x<0||y<0||x>=SW||y>=SH) return; c.fillStyle = col; c.fillRect(x, y, 1, 1); }
+  function srect(c, x0, y0, x1, y1, col) { c.fillStyle = col; c.fillRect(x0, y0, x1-x0+1, y1-y0+1); }
+  function sell(c, cx, cy, rx, ry, col) {
+    c.fillStyle = col;
+    for (var y = Math.floor(cy-ry)-1; y <= Math.ceil(cy+ry)+1; y++)
+      for (var x = Math.floor(cx-rx)-1; x <= Math.ceil(cx+rx)+1; x++) {
+        var dx = (x-cx)/rx, dy = (y-cy)/ry;
+        if (dx*dx + dy*dy <= 1) c.fillRect(Math.round(x), Math.round(y), 1, 1);
+      }
+  }
+
+  function eyesOpen(c, cx, cy, dx) {
+    for (var s = -1; s <= 1; s += 2) {
+      var ex = cx + s*dx;
+      srect(c, ex-1, cy-3, ex+1, cy, INK);
+      spx(c, ex-1, cy-3, WHITE);
+    }
+  }
+  function eyesHappy(c, cx, cy, dx) {
+    for (var s = -1; s <= 1; s += 2) {
+      var ex = cx + s*dx;
+      spx(c, ex, cy-2, INK); spx(c, ex-1, cy-1, INK); spx(c, ex+1, cy-1, INK);
+    }
+  }
+  function eyesClosed(c, cx, cy, dx) {
+    for (var s = -1; s <= 1; s += 2) srect(c, cx + s*dx - 1, cy-1, cx + s*dx + 1, cy-1, INK);
+  }
+  function eyesSad(c, cx, cy, dx) {
+    for (var s = -1; s <= 1; s += 2) {
+      var ex = cx + s*dx;
+      srect(c, ex-1, cy-2, ex+1, cy-1, INK);
+      spx(c, ex, cy-3, INK);
+    }
+  }
+  function eyesX(c, cx, cy, dx) {
+    for (var s = -1; s <= 1; s += 2) {
+      var ex = cx + s*dx;
+      spx(c, ex-1, cy-3, INK); spx(c, ex+1, cy-3, INK);
+      spx(c, ex, cy-2, INK);
+      spx(c, ex-1, cy-1, INK); spx(c, ex+1, cy-1, INK);
+    }
+  }
+  function mouthSmile(c, cx, cy) {
+    spx(c, cx-2, cy+3, INK); spx(c, cx+2, cy+3, INK);
+    srect(c, cx-1, cy+4, cx+1, cy+4, INK);
+  }
+  function mouthBig(c, cx, cy) {
+    spx(c, cx-3, cy+2, INK); spx(c, cx+3, cy+2, INK);
+    srect(c, cx-2, cy+3, cx+2, cy+5, INK);
+    srect(c, cx-1, cy+4, cx+1, cy+5, '#e05888');
+  }
+  function mouthOpen(c, cx, cy) {
+    srect(c, cx-2, cy+2, cx+2, cy+5, INK);
+    srect(c, cx-1, cy+4, cx+1, cy+5, '#e05888');
+  }
+  function mouthFrown(c, cx, cy) {
+    srect(c, cx-1, cy+4, cx+1, cy+4, INK);
+    spx(c, cx-2, cy+5, INK); spx(c, cx+2, cy+5, INK);
+  }
+  function mouthO(c, cx, cy) { srect(c, cx-1, cy+3, cx+1, cy+4, INK); }
+  function mouthSquig(c, cx, cy) {
+    spx(c, cx-3, cy+3, INK); spx(c, cx-2, cy+4, INK); spx(c, cx-1, cy+3, INK);
+    spx(c, cx, cy+4, INK); spx(c, cx+1, cy+3, INK); spx(c, cx+2, cy+4, INK);
+  }
+
+  var FRAMES = {
+    idle:  { e: eyesOpen,   m: mouthSmile },
+    blink: { e: eyesClosed, m: mouthSmile },
+    eat:   { e: eyesHappy,  m: mouthOpen  },
+    happy: { e: eyesHappy,  m: mouthBig   },
+    sad:   { e: eyesSad,    m: mouthFrown },
+    sick:  { e: eyesX,      m: mouthSquig },
+    sleep: { e: eyesClosed, m: mouthO     }
+  };
+
+  function getPetSprite(stageKey, frameKey) {
+    var key = stageKey + '_' + frameKey;
+    if (spriteCache[key]) return spriteCache[key];
+    var cv = document.createElement('canvas');
+    cv.width = SW; cv.height = SH;
+    var c = cv.getContext('2d');
+    var body = BODIES[stageKey] || BODIES.baby;
+    var pal = frameKey === 'sick' ? SICK_PAL : (PALS[stageKey] || PALS.baby);
+    var cx = 20, cy = 22;
+
+    if (body.ears) {
+      sell(c, cx-body.rx+1, cy-body.ry+1, 3, 4, pal.body);
+      sell(c, cx+body.rx-1, cy-body.ry+1, 3, 4, pal.body);
+      sell(c, cx-body.rx+1, cy-body.ry+2, 1.5, 2, pal.shade);
+      sell(c, cx+body.rx-1, cy-body.ry+2, 1.5, 2, pal.shade);
+    }
+    if (body.limbs) {
+      sell(c, cx-body.rx-1, cy+1, 2, 3, pal.body);
+      sell(c, cx+body.rx+1, cy+1, 2, 3, pal.body);
+    }
+    sell(c, cx, cy, body.rx, body.ry, pal.body);
+    sell(c, cx, cy + body.ry*0.5, body.rx*0.88, body.ry*0.62, pal.shade);
+    sell(c, cx - body.rx*0.35, cy - body.ry*0.42, body.rx*0.3, body.ry*0.22, pal.hi);
+    if (body.tuft) {
+      spx(c, cx, cy-body.ry-2, pal.body);
+      spx(c, cx-1, cy-body.ry-1, pal.body);
+      spx(c, cx+1, cy-body.ry-1, pal.body);
+      spx(c, cx, cy-body.ry-1, pal.shade);
+    }
+    if (body.limbs) {
+      srect(c, cx-5, cy+body.ry, cx-2, cy+body.ry+1, pal.shade);
+      srect(c, cx+2, cy+body.ry, cx+5, cy+body.ry+1, pal.shade);
+    }
+    var eyeDX = Math.max(4, body.rx - 5);
+    if (frameKey !== 'sick' && frameKey !== 'sleep') {
+      srect(c, cx-eyeDX-2, cy+2, cx-eyeDX, cy+3, pal.cheek);
+      srect(c, cx+eyeDX, cy+2, cx+eyeDX+2, cy+3, pal.cheek);
+    }
+    var fr = FRAMES[frameKey] || FRAMES.idle;
+    fr.e(c, cx, cy, eyeDX);
+    fr.m(c, cx, cy);
+    spriteCache[key] = cv;
+    return cv;
+  }
+
+  function getEggSprite(crack) {
+    var key = 'egg_' + crack;
+    if (spriteCache[key]) return spriteCache[key];
+    var cv = document.createElement('canvas');
+    cv.width = SW; cv.height = SH;
+    var c = cv.getContext('2d');
+    sell(c, 20, 22, 8, 11, '#fdf0d8');
+    sell(c, 20, 26, 7, 7, '#ecd3ac');
+    sell(c, 17, 17, 2.5, 3, '#fffaf0');
+    spx(c, 15, 24, '#d9bd8e'); spx(c, 24, 20, '#d9bd8e');
+    spx(c, 22, 28, '#d9bd8e'); spx(c, 17, 30, '#d9bd8e'); spx(c, 25, 26, '#d9bd8e');
+    if (crack >= 1) {
+      spx(c, 16, 20, INK); spx(c, 17, 21, INK); spx(c, 18, 20, INK);
+      spx(c, 19, 21, INK); spx(c, 20, 20, INK); spx(c, 21, 21, INK); spx(c, 22, 20, INK);
+    }
+    if (crack >= 2) {
+      spx(c, 18, 23, INK); spx(c, 19, 24, INK); spx(c, 21, 22, INK);
+      spx(c, 21, 24, INK); spx(c, 22, 25, INK); spx(c, 20, 23, INK);
+    }
+    spriteCache[key] = cv;
+    return cv;
+  }
+
+  /* ===== DECOR DATA ===== */
+  var stars = [], clouds = [], birds = [], flowers = [{x:12},{x:34},{x:60},{x:122},{x:142}];
+  for (var i = 0; i < 26; i++) stars.push({ x: 4 + Math.random()*152, y: 4 + Math.random()*76, ph: Math.random()*6 });
+  clouds.push({ x: 20, y: 14, spd: 2.2 }, { x: 90, y: 24, spd: 1.4 }, { x: 140, y: 10, spd: 1.8 });
+  birds.push({ x: 0, y: 18, spd: 9 }, { x: -50, y: 30, spd: 7 });
+
+  /* ===== GAME STATE ===== */
+  function clamp(v) { return Math.max(0, Math.min(100, v)); }
+  function createState() {
+    return {
+      age: 0, hatched: false, hatching: 0, alive: true,
+      sleeping: false, sick: false, env: 'home',
+      stats: { hunger: 100, thirst: 100, happy: 100, energy: 100, clean: 100, health: 100 }
+    };
+  }
+  function stageFor(age) {
+    for (var i = STAGES.length-1; i >= 0; i--) if (age >= STAGES[i].minAge) return STAGES[i];
+    return STAGES[0];
+  }
+  function setMsg(t) { el.msg.textContent = t; }
+  function needsAttention() {
+    var s = state.stats;
+    return !!poop || s.hunger < 25 || s.thirst < 25 || s.happy < 25 || s.clean < 25 || s.energy < 15;
+  }
+
+  /* ===== ACTIVITIES ===== */
+  function startActivity(name, dur) {
+    activity = name;
+    activityUntil = sceneTime + (dur || 2.4);
+    if (name === 'eat')   { sfxMunch(); spawnP('crumb', 7, 80, 58); }
+    if (name === 'drink') { sfxGlug(); spawnP('drop', 6, 80, 52); }
+    if (name === 'happy') { sfxHappy(); spawnP('heart', 6, 80, 52); }
+    if (name === 'clean') { sfxChime(); spawnP('bubble', 9, 80, 70); }
+    if (name === 'sad')   { sfxLose(); }
+    if (name === 'sick')  { sfxSick(); }
+  }
+  function endActivity() { activity = null; }
+
+  /* ===== PARTICLES ===== */
+  function spawnP(type, n, x0, y0) {
+    for (var i = 0; i < n; i++) particles.push({
+      type: type,
+      x: (x0 !== undefined ? x0 : 80) + (Math.random()-0.5)*24,
+      y: (y0 !== undefined ? y0 : 60) + (Math.random()-0.5)*12,
+      vx: (Math.random()-0.5)*14, vy: -14 - Math.random()*16,
+      life: 1, decay: 0.5 + Math.random()*0.5
+    });
+  }
+  function drawParticles(dt) {
+    for (var i = particles.length-1; i >= 0; i--) {
+      var p = particles[i];
+      p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 26*dt; p.life -= p.decay*dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      g.globalAlpha = Math.max(0, Math.min(1, p.life));
+      var x = p.x, y = p.y;
+      if (p.type === 'heart') {
+        var c = '#ff5f8f';
+        px(x-1, y, c); px(x+1, y, c); rect(x-2, y+1, x+2, y+1, c); rect(x-1, y+2, x+1, y+2, c); px(x, y+3, c);
+      } else if (p.type === 'star' || p.type === 'spark') {
+        var c2 = p.type === 'star' ? GOLD : '#fff3b0';
+        px(x, y-1, c2); rect(x-1, y, x+1, y, c2); px(x, y+1, c2);
+      } else if (p.type === 'bubble') {
+        rect(x, y, x+1, y+1, '#a8dcf0');
+      } else if (p.type === 'crumb') {
+        px(x, y, '#b5683a');
+      } else if (p.type === 'drop') {
+        rect(x, y, x, y+1, '#4db8e8');
+      }
+      g.globalAlpha = 1;
+    }
+  }
+
+  /* ===== POOP ===== */
+  function schedulePoop() { nextPoopAt = sceneTime + 45 + Math.random()*30; }
+  function spawnPoop() {
+    poop = { x: 30 + Math.random()*100, y: GROUND_Y + 2 };
+    schedulePoop();
+    setMsg('UH OH... CLEAN IT UP!');
+    sfxBeep();
+  }
+  function flushPoop() {
+    if (!poop) return false;
+    poop = null;
+    sfxFlush();
+    spawnP('bubble', 6, 80, 80);
+    state.stats.clean = clamp(state.stats.clean + 15);
+    setMsg('FLUSHED! ALL CLEAN!');
+    return true;
+  }
+  function drawPoop(t) {
+    if (!poop) return;
+    var x = poop.x, y = poop.y;
+    rect(x-4, y, x+4, y+2, '#6e4520');
+    rect(x-3, y-2, x+3, y-1, '#8a5a2e');
+    rect(x-2, y-4, x+2, y-3, '#8a5a2e');
+    px(x, y-5, '#8a5a2e'); px(x+1, y-6, '#6e4520');
+    for (var s = -3; s <= 3; s += 3) {
+      var wob = Math.round(Math.sin(t*3 + s));
+      px(x+s+wob, y-8, '#9aa880'); px(x+s+wob, y-10, '#9aa880');
+    }
+  }
+
+  /* ===== SHELL GAME ===== */
+  var SHELL_X = [40, 80, 120];
+  function startShellGame() {
+    shellGame = {
+      phase: 'reveal', phaseStart: sceneTime,
+      answer: Math.floor(Math.random()*3),
+      pick: -1, swaps: 0, order: [0,1,2],
+      swapAnim: 0, swapPair: null
+    };
+    sfxShuffle();
+    setMsg('WATCH THE STAR...');
+  }
+  function pickSwap() {
+    var a = Math.floor(Math.random()*3), b = Math.floor(Math.random()*3);
+    while (b === a) b = Math.floor(Math.random()*3);
+    return [a, b];
+  }
+  function shellGameUpdate() {
+    if (!shellGame) return;
+    var sg = shellGame, dt = sceneTime - sg.phaseStart;
+    if (sg.phase === 'reveal' && dt > 1.1) {
+      sg.phase = 'shuffle'; sg.phaseStart = sceneTime;
+      sg.swapPair = pickSwap(); sg.swapAnim = 0;
+      sfxShuffle();
+    } else if (sg.phase === 'shuffle') {
+      sg.swapAnim = dt / 0.45;
+      if (sg.swapAnim >= 1) {
+        var a = sg.swapPair[0], b = sg.swapPair[1];
+        var tmp = sg.order[a]; sg.order[a] = sg.order[b]; sg.order[b] = tmp;
+        sg.swaps++;
+        if (sg.swaps >= 3 + Math.floor(Math.random()*2)) {
+          sg.phase = 'pick'; sg.phaseStart = sceneTime;
+          setMsg('WHICH SHELL? TAP ONE!');
+        } else {
+          sg.swapPair = pickSwap(); sg.swapAnim = 0; sg.phaseStart = sceneTime;
+          sfxShuffle();
+        }
+      }
+    } else if (sg.phase === 'result' && dt > 1.6) {
+      var win = sg.order[sg.pick] === sg.answer;
+      shellGame = null;
+      if (win) {
+        state.stats.happy = clamp(state.stats.happy + 24);
+        state.stats.hunger = clamp(state.stats.hunger + 8);
+        setMsg('YOU FOUND IT! YAY!');
+        sfxWin();
+        startActivity('happy', 2.6);
+      } else {
+        state.stats.happy = clamp(state.stats.happy + 6);
+        setMsg('WRONG SHELL... STILL FUN!');
+        startActivity('sad', 1.6);
+      }
+      refreshUI();
+    }
+  }
+  function shellGameClick(lx) {
+    if (!shellGame || shellGame.phase !== 'pick') return;
+    var best = 0, bd = 999;
+    for (var i = 0; i < 3; i++) {
+      var d = Math.abs(lx - SHELL_X[i]);
+      if (d < bd) { bd = d; best = i; }
+    }
+    shellGame.pick = best;
+    shellGame.phase = 'result';
+    shellGame.phaseStart = sceneTime;
+    sfxClick();
+  }
+  function drawShell(x, y, lifted) {
+    var yy = lifted ? y - 8 : y;
+    rect(x-7, yy+4, x+7, yy+7, '#d1587a');
+    rect(x-6, yy, x+6, yy+3, '#ff8fb8');
+    rect(x-4, yy-3, x+4, yy-1, '#ff8fb8');
+    rect(x-1, yy-3, x+1, yy+7, '#d1587a');
+    px(x-3, yy+1, WHITE);
+  }
+  function drawStarShape(x, y) {
+    rect(x-1, y-3, x+1, y+3, GOLD);
+    rect(x-3, y-1, x+3, y+1, GOLD);
+    px(x, y, '#fff3b0');
+  }
+  function drawShellGame(t) {
+    var sg = shellGame;
+    for (var i = 0; i < 3; i++) {
+      var x = SHELL_X[i];
+      if (sg.phase === 'shuffle' && sg.swapPair) {
+        var a = sg.swapPair[0], b = sg.swapPair[1];
+        var k = Math.min(1, sg.swapAnim);
+        var e = k*k*(3-2*k);
+        if (i === a) x = SHELL_X[a] + (SHELL_X[b]-SHELL_X[a])*e;
+        else if (i === b) x = SHELL_X[b] + (SHELL_X[a]-SHELL_X[b])*e;
+      }
+      var shellId = sg.order[i];
+      var showStar = (sg.phase === 'reveal' && shellId === sg.answer) ||
+                     (sg.phase === 'result' && i === sg.pick && sg.order[sg.pick] === sg.answer);
+      if (showStar) drawStarShape(Math.round(x), GROUND_Y - 4);
+      drawShell(Math.round(x), GROUND_Y - 6, sg.phase === 'result' && i === sg.pick);
+      if (sg.phase === 'result' && i === sg.pick && sg.order[sg.pick] !== sg.answer) {
+        rect(Math.round(x)-1, GROUND_Y-3, Math.round(x)+1, GROUND_Y-1, INK);
+      }
+    }
+  }
+
+  /* ===== SCENE DECOR ===== */
+  function drawDecor(t) {
+    var env = state.env;
+    if (env === 'space') {
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i], a = Math.sin(t*2 + s.ph);
+        if (a > 0.1) px(s.x, s.y, a > 0.7 ? '#fff3b0' : '#b8b8e0');
+      }
+      ell(32, 28, 7, 7, '#c96f4a');
+      ell(30, 26, 2.5, 2.5, '#e08a5f');
+      for (var r = -9; r <= 9; r++) px(32 + r, 28 + Math.round(r*0.25), '#e8c98a');
+      ell(40, 104, 6, 2, '#6a6a94');
+      ell(120, 110, 8, 2.5, '#6a6a94');
+    } else if (env === 'beach') {
+      ell(134, 16, 6, 6, '#ffb84d');
+      ell(132, 14, 2.5, 2.5, '#ffd98a');
+      rect(0, GROUND_Y-14, W-1, GROUND_Y-1, '#7ec8e3');
+      for (var x = 0; x < W; x += 6) {
+        var yy = GROUND_Y - 14 + Math.round(Math.sin(t*2 + x*0.18)*1.5);
+        px(x, yy, WHITE); px(x+1, yy, WHITE);
+      }
+      rect(18, 62, 18, 80, '#8a6a45');
+      ell(18, 60, 9, 4, '#ff6b6b');
+      px(18, 56, '#ff6b6b');
+    } else if (env === 'park') {
+      ell(134, 16, 6, 6, '#ffb84d');
+      for (var ci = 0; ci < clouds.length; ci++) {
+        var cx2 = ((clouds[ci].x + t*clouds[ci].spd) % (W+30)) - 15;
+        ell(cx2, clouds[ci].y, 7, 3, WHITE);
+        ell(cx2+5, clouds[ci].y+1, 5, 2.5, WHITE);
+      }
+      var treeXs = [16, 140];
+      for (var ti = 0; ti < 2; ti++) {
+        rect(treeXs[ti]-2, 66, treeXs[ti]+1, GROUND_Y, '#8a6a45');
+        ell(treeXs[ti], 58, 10, 8, '#6f9e4f');
+        ell(treeXs[ti]-3, 54, 3, 2.5, '#8abe68');
+      }
+      for (var bi = 0; bi < birds.length; bi++) {
+        var bx = ((birds[bi].x + t*birds[bi].spd) % (W+20)) - 10;
+        px(bx-1, birds[bi].y, INK); px(bx, birds[bi].y-1, INK); px(bx+1, birds[bi].y, INK);
+      }
+    } else {
+      ell(134, 16, 6, 6, '#ffb84d');
+      ell(132, 14, 2.5, 2.5, '#ffd98a');
+      ell(30, GROUND_Y+6, 26, 12, '#cfe3a8');
+      ell(120, GROUND_Y+8, 30, 13, '#c4dc9c');
+      rect(10, 68, 24, GROUND_Y, '#f0b8c8');
+      rect(15, 76, 19, GROUND_Y, '#8a6a45');
+      for (var hi = 0; hi <= 9; hi++) {
+        px(8+hi, 68 - Math.abs(4-Math.abs(hi-4.5)), '#d1587a');
+        px(26-hi, 68 - Math.abs(4-Math.abs(hi-4.5)), '#d1587a');
+      }
+    }
+    if (env === 'home' || env === 'park') {
+      for (var fi = 0; fi < flowers.length; fi++) {
+        var sway = Math.round(Math.sin(t*1.5 + flowers[fi].x));
+        rect(flowers[fi].x, GROUND_Y-4, flowers[fi].x, GROUND_Y, '#5a8a3c');
+        px(flowers[fi].x + sway, GROUND_Y-5, '#ff6b9d');
+        px(flowers[fi].x + sway - 1, GROUND_Y-6, '#ffd93d');
+      }
+    }
+  }
+
+  function skyColors() {
+    if (state.env === 'space') return { sky: '#2c2c54', ground: '#8a8ab0', strip: '#6a6a94' };
+    if (state.env === 'beach') return { sky: '#aee3f5', ground: '#f0d9a0', strip: '#e0c088' };
+    return { sky: '#f8eed2', ground: '#e5cf9e', strip: '#a8c66c' };
+  }
+
+  function petFrameNow(t) {
+    if (state.sick) return 'sick';
+    if (state.sleeping) return 'sleep';
+    if (activity) {
+      if (activity === 'eat') return 'eat';
+      if (activity === 'sad') return 'sad';
+      if (activity === 'sick') return 'sick';
+      return 'happy';
+    }
+    if (t < blinkUntil) return 'blink';
+    if (state.stats.happy <= 22) return 'sad';
+    return 'idle';
+  }
+
+  /* ===== MAIN RENDER ===== */
+  var lastDt = 0;
+  function render(t, dt) {
+    var sc = skyColors();
+    rect(0, 0, W-1, H-1, sc.sky);
+    rect(0, GROUND_Y, W-1, H-1, sc.ground);
+    rect(0, GROUND_Y, W-1, GROUND_Y+2, sc.strip);
+    drawDecor(t);
+    drawPoop(t);
+
+    var stage = stageFor(state.age);
+    var petX = 80, petY = 50, bob = 0;
+
+    if (state.alive && !state.hatched) {
+      var wob = state.hatching >= 2 ? Math.sin(t*22)*2 : Math.sin(t*3)*1;
+      g.drawImage(getEggSprite(state.hatching), Math.round(petX - SW/2 + wob), petY + 4);
+    } else if (state.alive && state.hatched) {
+      if (activity === 'happy') {
+        bob = Math.abs(Math.sin(t*7))*-7;
+        petX = 80 + Math.sin(t*2.4)*26;
+      } else if (activity === 'eat' || activity === 'drink') {
+        bob = Math.sin(t*8)*1.5;
+      } else if (t < hopUntil) {
+        bob = -Math.abs(Math.sin((hopUntil-t)*Math.PI/0.45))*7;
+      } else if (!state.sleeping) {
+        bob = Math.sin(t*2)*1.2;
+      }
+      if (shellGame) petX = 20;
+      var frame = petFrameNow(t);
+      var sk = stage.key === 'egg' ? 'baby' : stage.key;
+      var spr = getPetSprite(sk, frame);
+      if (t < glanceUntil && glanceDir < 0) {
+        g.save();
+        g.translate(Math.round(petX), 0);
+        g.scale(-1, 1);
+        g.drawImage(spr, -SW/2, Math.round(petY + bob));
+        g.restore();
+      } else {
+        g.drawImage(spr, Math.round(petX - SW/2), Math.round(petY + bob));
+      }
+    }
+
+    if (t < ghostUntil) drawGhost(t);
+
+    if (shellGame) drawShellGame(t);
+    drawParticles(dt);
+
+    if (state.hatched && state.alive && !state.sleeping && needsAttention() && !shellGame) {
+      var ay = 30 + Math.round(Math.sin(t*4)*1.5);
+      rect(75, ay, 85, ay+9, WHITE);
+      rect(76, ay+1, 84, ay+8, '#ffe9a8');
+      rect(79, ay+2, 81, ay+5, INK);
+      px(80, ay+7, INK);
+      px(79, ay+10, WHITE); px(80, ay+11, WHITE);
+    }
+
+    if (state.sleeping && state.alive) {
+      g.fillStyle = '#8f9bd8';
+      g.font = 'bold 9px monospace';
+      g.fillText('z', 98 + Math.sin(t)*2, 48 - (t % 2)*8);
+      g.fillText('Z', 104 + Math.sin(t)*2, 42 - (t % 2)*8);
+    }
+
+    var hr = new Date().getHours();
+    if (state.sleeping || hr >= 20 || hr < 6) {
+      g.fillStyle = 'rgba(18,16,52,0.42)';
+      g.fillRect(0, 0, W, H);
+      g.fillStyle = '#ffe9a8';
+      g.beginPath(); g.arc(136, 16, 5, 0, 7); g.fill();
+      g.fillStyle = sc.sky === '#2c2c54' ? '#2c2c54' : '#f6ecc9';
+      g.beginPath(); g.arc(134, 14, 4, 0, 7); g.fill();
+      for (var si = 0; si < 12; si++) {
+        if (Math.sin(t*2 + stars[si].ph) > 0.3) { g.fillStyle = '#fff3b0'; g.fillRect(Math.round(stars[si].x), Math.round(stars[si].y), 1, 1); }
+      }
+    } else if (hr >= 17) {
+      g.fillStyle = 'rgba(255,140,60,0.16)';
+      g.fillRect(0, 0, W, H);
+    }
+
+    if (t < evolveFlashUntil) {
+      g.fillStyle = 'rgba(255,255,255,' + (Math.abs(Math.sin(t*14))*0.5).toFixed(2) + ')';
+      g.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawGhost(t) {
+    var k = 1 - (ghostUntil - t) / 2.5;
+    var gy = 60 - k*34;
+    g.globalAlpha = Math.max(0, 1 - k*0.6);
+    ell(80, gy, 9, 9, '#f4f0ff');
+    for (var i = -8; i <= 8; i += 4) px(80+i, gy+9, '#f4f0ff');
+    px(76, gy-2, INK); px(83, gy-2, INK);
+    rect(79, gy+3, 81, gy+3, INK);
+    ell(80, gy-14, 5, 1.5, GOLD);
+    g.globalAlpha = 1;
+  }
+
+  /* ===== RENDER LOOP ===== */
+  function loop(ts) {
+    var t = ts / 1000;
+    var dt = Math.min(0.05, t - (lastDt || t));
+    lastDt = t;
+    sceneTime = t;
+
+    if (state && state.alive && state.hatched) {
+      if (t - lastBlinkAt > 3.4) { lastBlinkAt = t; blinkUntil = t + 0.16; }
+      if (!activity && !state.sleeping && Math.random() < 0.004) {
+        glanceDir = Math.random() < 0.5 ? -1 : 1;
+        glanceUntil = t + 1.1;
+      }
+      if (!activity && !state.sleeping && state.stats.happy > 55 && Math.random() < 0.003) {
+        hopUntil = t + 0.45;
+        if (Math.random() < 0.5) sfxHappy();
+      }
+      if (!state.sleeping && !poop && nextPoopAt > 0 && t > nextPoopAt) spawnPoop();
+    }
+    if (activity && t > activityUntil) endActivity();
+    shellGameUpdate();
+    render(t, dt);
+    requestAnimationFrame(loop);
+  }
+
+  /* ===== UI REFRESH ===== */
+  function refreshUI() {
+    var stage = stageFor(state.age);
+    el.stageName.textContent = state.hatched ? stage.name : 'EGG';
+    el.ageDisplay.textContent = 'AGE ' + state.age;
+    for (var k in state.stats) {
+      var v = Math.round(state.stats[k]);
+      el.statBars[k].style.width = v + '%';
+      el.statVals[k].textContent = v;
+    }
+  }
+
+  /* ===== HATCH / EVOLVE / SLEEP / DIE ===== */
+  function startCrack() {
+    if (state.hatched || state.hatching > 0) return;
+    state.hatching = 1;
+    sfxCrack();
+    setMsg('THE EGG IS CRACKING...!');
+    setTimeout(function() {
+      if (state.hatched || !state.alive) return;
+      state.hatching = 2;
+      sfxCrack();
+      setMsg('TAP THE EGG AGAIN!');
+    }, 900);
+  }
+  function finishHatch() {
+    if (state.hatched) return;
+    state.hatched = true;
+    state.hatching = 0;
+    lastStageKey = 'baby';
+    sfxFanfare();
+    spawnP('star', 16, 80, 55);
+    spawnP('heart', 8, 80, 55);
+    setMsg('A BABY IS BORN!!');
+    startActivity('happy', 3);
+    schedulePoop();
+    refreshUI();
+  }
+  function checkEvolution() {
+    var stage = stageFor(state.age);
+    if (lastStageKey !== 'egg' && stage.key !== lastStageKey) {
+      setMsg('IT EVOLVED INTO ' + stage.name + '!!');
+      evolveFlashUntil = sceneTime + 1.2;
+      sfxEvolve();
+      spawnP('spark', 18, 80, 55);
+      startActivity('happy', 3);
+    }
+    lastStageKey = stage.key;
+  }
+  function goSleep() {
+    if (!state.hatched || !state.alive) return;
+    state.sleeping = true;
+    endActivity();
+    setMsg('SWEET DREAMS...');
+    stopMusic();
+    sfxLullaby();
+    refreshUI();
+  }
+  function wakeUp(auto) {
+    state.sleeping = false;
+    setMsg(auto ? 'GOOD MORNING!' : 'IT WOKE UP!');
+    if (audioStarted && !muted) startMusic();
+    refreshUI();
+  }
+  function die() {
+    state.alive = false;
+    clearInterval(tickTimer); tickTimer = null;
+    endActivity();
+    stopMusic();
+    sfxDeath();
+    ghostUntil = sceneTime + 2.5;
+    var stage = stageFor(state.age);
+    setTimeout(function() {
+      el.goEmoji.textContent = '👼';
+      el.goText.textContent = 'Your pet lived to AGE ' + state.age + ' as a proud ' + stage.name + '. Every journey matters!';
+      el.overlay.classList.add('show');
+    }, 2200);
+    refreshUI();
+  }
+
+  /* ===== TICK ===== */
+  function tick() {
+    if (!state.alive) return;
+    tickCount++;
+    var env = ENVS[state.env] || ENVS.home;
+
+    if (!state.hatched) {
+      if (tickCount > 4 && state.hatching === 0) startCrack();
+      refreshUI();
+      return;
+    }
+
+    state.age++;
+
+    if (state.sleeping) {
+      state.stats.energy = clamp(state.stats.energy + 6);
+      state.stats.hunger = clamp(state.stats.hunger - 0.3*env.hunger);
+      state.stats.thirst = clamp(state.stats.thirst - 0.3*env.thirst);
+      if (state.stats.energy >= 100) wakeUp(true);
+    } else {
+      state.stats.hunger = clamp(state.stats.hunger - 1.1*env.hunger);
+      state.stats.thirst = clamp(state.stats.thirst - 1.2*env.thirst);
+      state.stats.happy  = clamp(state.stats.happy  - 0.8*env.happy);
+      state.stats.energy = clamp(state.stats.energy - 0.7*env.energy);
+      state.stats.clean  = clamp(state.stats.clean  - 0.9*env.clean);
+    }
+
+    var dmg = 0;
+    if (state.stats.hunger <= 0) dmg += 1.4;
+    if (state.stats.thirst <= 0) dmg += 1.6;
+    if (state.stats.clean <= 15) dmg += 0.7;
+    if (state.stats.happy <= 10) dmg += 0.4;
+    if (state.sick) dmg += 0.8;
+    if (poop) dmg += 0.8;
+    state.stats.health = clamp(state.stats.health - dmg);
+
+    if (!state.sick && state.stats.health < 40 && Math.random() < 0.16) {
+      state.sick = true;
+      setMsg('YOUR PET GOT SICK!');
+      startActivity('sick', 2.2);
+    }
+    if (!state.sleeping && state.stats.energy <= 4 && state.stats.happy > 15) goSleep();
+    if (!state.sleeping && needsAttention() && sceneTime - lastBeepAt > 12) {
+      lastBeepAt = sceneTime;
+      sfxBeep();
+    }
+
+    checkEvolution();
+    if (state.stats.health <= 0) return die();
+    refreshUI();
+  }
+
+  /* ===== ACTIONS ===== */
+  function canAct() {
+    if (!state.alive) return false;
+    if (!state.hatched) { setMsg('TAP THE EGG ON SCREEN!'); return false; }
+    if (state.sleeping) { setMsg('SHH... IT IS SLEEPING'); return false; }
+    if (shellGame) { setMsg('GAME IN PROGRESS!'); return false; }
+    return true;
+  }
+  function actFeed() {
+    if (!canAct()) return;
+    state.stats.hunger = clamp(state.stats.hunger + 30);
+    state.stats.clean = clamp(state.stats.clean - 3);
+    state.stats.health = clamp(state.stats.health + 2);
+    setMsg('NOM NOM NOM!');
+    startActivity('eat', 2.4);
+    refreshUI();
+  }
+  function actDrink() {
+    if (!canAct()) return;
+    state.stats.thirst = clamp(state.stats.thirst + 32);
+    state.stats.health = clamp(state.stats.health + 2);
+    setMsg('GLUG GLUG... REFRESHING!');
+    startActivity('drink', 2.2);
+    refreshUI();
+  }
+  function actPlay() {
+    if (!state.alive) return;
+    if (!state.hatched) { setMsg('HATCH THE EGG FIRST!'); return; }
+    if (state.sleeping) { setMsg('SHH... SLEEPING'); return; }
+    if (shellGame) return;
+    if (state.stats.energy < 12) { setMsg('TOO TIRED TO PLAY...'); sfxLose(); return; }
+    state.stats.energy = clamp(state.stats.energy - 8);
+    state.stats.hunger = clamp(state.stats.hunger - 4);
+    state.stats.thirst = clamp(state.stats.thirst - 3);
+    startShellGame();
+    refreshUI();
+  }
+  function actClean() {
+    if (!canAct()) return;
+    if (flushPoop()) { refreshUI(); return; }
+    state.stats.clean = clamp(state.stats.clean + 38);
+    state.stats.health = clamp(state.stats.health + 4);
+    setMsg('SCRUB SCRUB! SPARKLY!');
+    startActivity('clean', 2.6);
+    refreshUI();
+  }
+  function actSleep() {
+    if (!state.hatched || !state.alive) return;
+    if (shellGame) return;
+    if (state.sleeping) wakeUp(false); else goSleep();
+  }
+  function actCure() {
+    if (!canAct()) return;
+    if (!state.sick) { setMsg('HEALTHY AS CAN BE!'); sfxHappy(); return; }
+    state.sick = false;
+    state.stats.health = clamp(state.stats.health + 30);
+    setMsg('ALL BETTER!');
+    startActivity('happy', 2.4);
+    refreshUI();
+  }
+  function setEnv(key) {
+    if (!state.alive) return;
+    state.env = key;
+    el.envBtns.forEach(function(b) { b.classList.toggle('active', b.dataset.env === key); });
+    if (state.hatched) setMsg('OFF TO THE ' + (ENVS[key] || ENVS.home).label + '!');
+    sfxClick();
+  }
+
+  /* ===== CANVAS CLICK ===== */
+  function canvasClick(ev) {
+    unlockAudio();
+    if (!state.alive) return;
+    var r = el.lcd.getBoundingClientRect();
+    var lx = (ev.clientX - r.left) / r.width * W;
+    if (shellGame) { shellGameClick(lx); return; }
+    if (!state.hatched) {
+      if (state.hatching >= 2) finishHatch();
+      else startCrack();
+      return;
+    }
+    if (state.sleeping) { setMsg('...SLEEPING. LET IT REST'); return; }
+    state.stats.happy = clamp(state.stats.happy + 4);
+    startActivity('happy', 1.4);
+    refreshUI();
+  }
+
+  /* ===== AUDIO UNLOCK / MUTE ===== */
+  function unlockAudio() {
+    if (audioStarted) return;
+    audioStarted = true;
+    initAudio();
+    if (AC && AC.state === 'suspended') AC.resume();
+    if (!muted && state && state.alive && !state.sleeping) startMusic();
+  }
+  function toggleMute() {
+    muted = !muted;
+    el.mute.textContent = muted ? '🔇' : '🔊';
+    if (!audioStarted) { unlockAudio(); }
+    if (master) master.gain.value = muted ? 0 : 1;
+  }
+
+  /* ===== RESET ===== */
+  function resetGame() {
+    clearInterval(tickTimer);
+    state = createState();
+    tickCount = 0;
+    particles = [];
+    activity = null;
+    poop = null; nextPoopAt = 0;
+    shellGame = null;
+    lastStageKey = 'egg';
+    ghostUntil = 0; evolveFlashUntil = 0;
+    lastBeepAt = 0;
+    el.overlay.classList.remove('show');
+    el.envBtns.forEach(function(b) { b.classList.toggle('active', b.dataset.env === 'home'); });
+    setMsg('TAP THE EGG TO HATCH IT!');
+    refreshUI();
+    tickTimer = setInterval(tick, 1000);
+  }
+
+  /* ===== INIT ===== */
+  function init() {
+    $('btnFeed').onclick = function() { unlockAudio(); actFeed(); };
+    $('btnDrink').onclick = function() { unlockAudio(); actDrink(); };
+    $('btnPlay').onclick = function() { unlockAudio(); actPlay(); };
+    $('btnClean').onclick = function() { unlockAudio(); actClean(); };
+    $('btnSleep').onclick = function() { unlockAudio(); actSleep(); };
+    $('btnCure').onclick = function() { unlockAudio(); actCure(); };
+    $('btnReset').onclick = function() { unlockAudio(); sfxClick(); resetGame(); };
+    $('goResetBtn').onclick = function() { unlockAudio(); resetGame(); };
+    el.mute.onclick = toggleMute;
+    el.lcd.addEventListener('pointerdown', canvasClick);
+    el.envBtns.forEach(function(b) {
+      b.onclick = function() { unlockAudio(); setEnv(b.dataset.env); };
+    });
+
+    state = createState();
+    resetGame();
+    requestAnimationFrame(loop);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>

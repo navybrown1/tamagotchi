@@ -3,5 +3,8 @@
   "public": true,
   "buildCommand": null,
   "outputDirectory": ".",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/tamagotchi.html" }
+  ]
 }
